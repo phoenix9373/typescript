@@ -1,4 +1,5 @@
 {
+  // A. 함수에서 타입 이용하기
   // 1. JavaScript ⛔
   function jsAdd(num1, num2) {
     // 사용하지 않는 이유
@@ -30,4 +31,25 @@
       resolve(100);
     });
   }
+
+  // B. 함수 타입을 이용하는 또 다른 방법
+  // 1. Optional parameter: lastName?은 매개변수를 전달하지 않아도 된다.
+  function printName(firstName: string, lastName?: string) {
+    console.log(firstName);
+    console.log(lastName);
+  }
+  printName("Aliee", "Te");
+  printName("Aliee"); // lastName이 undefined로 출력된다.
+
+  // 2. Default parameter: 인자를 전달하지 않았을 때, 기본값으로 지정된다.
+  function printMessage(message: string = "default message") {
+    console.log(message);
+  }
+  printMessage();
+
+  // 3. Rest parameter: 인자로 전달된 모든 매개변수를 numbers로 받아온다.
+  function addNumbers(...numbers: number[]): number {
+    return numbers.reduce((acc, cur) => acc + cur);
+  }
+  console.log(addNumbers(1, 2));
 }
