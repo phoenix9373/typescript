@@ -21,14 +21,14 @@
   // 부모 클래스
   class CoffeeMachine implements CoffeeMaker {
     private static BEANS_GRAMM_PER_SHOT: number = 7;
-    private coffeeBeans: number = 0;
+    private coffeeBeans: number;
 
-    public constructor(coffeeBeans: number) {
+    constructor(
+      coffeeBeans: number,
+      private milk: MilkFrother,
+      private sugar: SugarProvider
+    ) {
       this.coffeeBeans = coffeeBeans;
-    }
-
-    static makeMachine(coffeeBeans: number): CoffeeMachine {
-      return new CoffeeMachine(coffeeBeans);
     }
 
     fillCoffeeBeans(beans: number) {
@@ -65,26 +65,74 @@
     makeCoffee(shots: number): CoffeeCup {
       this.grindBeans(shots);
       this.preheat();
-      return this.extract(shots);
+
+      const coffee = this.extract(shots);
+      const sugarAdded = this.sugar.addSugar(coffee);
+      return this.milk.makeMilk(sugarAdded);
     }
   }
 
-  // 구성요소 1: 우유 첨가
-  class CheapMilkSteamer {
+  // 구성요소 1의 interface
+  interface MilkFrother {
+    makeMilk(cup: CoffeeCup): CoffeeCup;
+  }
+
+  // 구성요소 2의 interface
+  interface SugarProvider {
+    addSugar(cup: CoffeeCup): CoffeeCup;
+  }
+
+  // 구성요소 1: Cheap한 우유 첨가 -> MilkFrother라는 interface의 규격을 구현한 클래스
+  class CheapMilkSteamer implements MilkFrother {
     private steaming(): void {
       console.log("Steaming the milk...");
     }
-    makeMilk(coffee: CoffeeCup): CoffeeCup {
+    makeMilk(cup: CoffeeCup): CoffeeCup {
       this.steaming();
       return {
-        ...coffee,
+        ...cup,
         hasMilk: true,
       };
     }
   }
 
-  // 구성요소 2: 설탕 추가
-  class AutomaticSugarMixer {
+  // 구성요소 2: Fancy한 우유 첨가
+  class FancyMilkSteamer implements MilkFrother {
+    private steaming(): void {
+      console.log("Fancy Steaming the milk...");
+    }
+    makeMilk(cup: CoffeeCup): CoffeeCup {
+      this.steaming();
+      return {
+        ...cup,
+        hasMilk: true,
+      };
+    }
+  }
+
+  // 구성요소 3: Cold한 우유 첨가
+  class ColdMilkSteamer implements MilkFrother {
+    private steaming(): void {
+      console.log("Cold Steaming the milk...");
+    }
+    makeMilk(cup: CoffeeCup): CoffeeCup {
+      this.steaming();
+      return {
+        ...cup,
+        hasMilk: true,
+      };
+    }
+  }
+
+  // 구성요소 3-1: 우유 미첨가
+  class NoMilk implements MilkFrother {
+    makeMilk(cup: CoffeeCup): CoffeeCup {
+      return cup;
+    }
+  }
+
+  // 구성요소 4: Candy 설탕 추가 -> SugarProvider라는 interface의 규격을 구현한 클래스
+  class CandySugarMixer implements SugarProvider {
     private getSugar(): void {
       console.log("Getting some sugar...");
     }
@@ -98,60 +146,54 @@
     }
   }
 
-  // 구성요소 활용 1: 우유 첨가
-  class CaffeLatteMachine extends CoffeeMachine {
-    constructor(
-      beans: number,
-      public readonly serialNumber: string,
-      private milkFrother: CheapMilkSteamer
-    ) {
-      super(beans); // 부모 클래스의 생성자 함수
+  // 구성요소 5: 설탕 추가
+  class SugarMixer implements SugarProvider {
+    private getSugar(): void {
+      console.log("Getting some sugar from jar..!");
     }
 
-    makeCoffee(shots: number): CoffeeCup {
-      const coffee = super.makeCoffee(shots);
-      return this.milkFrother.makeMilk(coffee);
+    addSugar(cup: CoffeeCup): CoffeeCup {
+      this.getSugar();
+      return {
+        ...cup,
+        hasSugar: true,
+      };
     }
   }
 
-  // 구성요소 활용 2: 설탕 추가
-  class SweetCoffeeMaker extends CoffeeMachine {
-    constructor(private beans: number, private sugar: AutomaticSugarMixer) {
-      super(beans);
-    }
-    makeCoffee(shots: number): CoffeeCup {
-      const coffee = super.makeCoffee(shots);
-      return this.sugar.addSugar(coffee);
+  // 구성요소 5-1: 설탕 미첨가
+  class NoSugar implements SugarProvider {
+    addSugar(cup: CoffeeCup): CoffeeCup {
+      return cup;
     }
   }
 
-  // 구성요소 활용 3: 우유 첨가 + 설탕 추가
-  class SweetCaffeLatteMachine extends CoffeeMachine {
-    constructor(
-      private beans: number,
-      private milk: CheapMilkSteamer,
-      private sugar: AutomaticSugarMixer
-    ) {
-      super(beans);
-    }
+  /**
+   * Composition의 문제점
+   * 1. 재사용성이 떨어진다.
+   * - 만약 CaffeLatteMachine이 '서울우유'만 취급가능하다면?(다른 우유는 불가하다면?)
+   * - Sugar도 마찬가지로 백설탕만 가능하다면?
+   * 해결: Interface를 통해 클래스 간 의사소통을 하는 것이 좋다.
+   * 주의: OverEngineering하지마라. 기간이 타이트한데, 확장성만 너무 고려하거나 코드의 퀄리티만 고집하지않는다.
+   */
 
-    makeCoffee(shots: number): CoffeeCup {
-      const coffee = super.makeCoffee(shots);
-      const sugarAdded = this.sugar.addSugar(coffee);
-      return this.milk.makeMilk(sugarAdded);
-    }
-  }
+  // milk, sugar provider
+  const cheapMilkMaker = new CheapMilkSteamer();
+  const fancyMilkMaker = new FancyMilkSteamer();
+  const coldMilkMaker = new ColdMilkSteamer();
+  const noMilk = new NoMilk();
 
-  // const machines: CoffeeMaker[] = [
-  //   new CoffeeMachine(16),
-  //   new CaffeLatteMachine(16, "21"),
-  //   new SweetCoffeeMaker(16),
-  //   new CoffeeMachine(16),
-  //   new CaffeLatteMachine(16, "21"),
-  //   new SweetCoffeeMaker(16),
-  // ];
-  // machines.forEach((machine) => {
-  //   console.log("--------------------------------");
-  //   machine.makeCoffee(1);
-  // });
+  const candySugar = new CandySugarMixer();
+  const sugar = new SugarMixer();
+  const noSugar = new NoSugar();
+
+  // machine
+  const sweetMachine = new CoffeeMachine(12, noMilk, candySugar);
+  const sweetCandyMachine = new CoffeeMachine(12, noMilk, sugar); // 같은 클래스로, 다른 객체를 전달하여 인스턴스 생성
+
+  const latteMachine = new CoffeeMachine(12, cheapMilkMaker, noSugar);
+  const coldLatteMachine = new CoffeeMachine(12, coldMilkMaker, noSugar);
+  const fancyLatteMachine = new CoffeeMachine(12, fancyMilkMaker, noSugar);
+
+  const sweetLatteMachine = new CoffeeMachine(12, cheapMilkMaker, candySugar);
 }
